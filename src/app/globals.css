@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    /* Professional dark blue — used for sidebar active state & primary actions */
+    --primary: 215 55% 24%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 214 32% 94%;
+    --secondary-foreground: 215 55% 24%;
+    --muted: 214 32% 94%;
+    --muted-foreground: 215 16% 45%;
+    --accent: 214 32% 94%;
+    --accent-foreground: 215 55% 24%;
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214 20% 90%;
+    --input: 214 20% 88%;
+    --ring: 215 55% 24%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222 47% 7%;
+    --foreground: 210 40% 96%;
+    --card: 222 44% 10%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 44% 10%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 213 60% 60%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 30% 16%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 217 30% 16%;
+    --muted-foreground: 215 20% 62%;
+    --accent: 217 30% 18%;
+    --accent-foreground: 210 40% 96%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 30% 18%;
+    --input: 217 30% 20%;
+    --ring: 213 60% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+html {
+  scroll-padding-top: env(safe-area-inset-top, 0px);
+}
