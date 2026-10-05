@@ -4,15 +4,33 @@ import type { Teacher, TeacherListResult } from "@/server/models/teacher.model";
 import {
   countActiveTeachers,
   findActiveTeachers,
+  findTeacherFilterOptions,
   type TeacherDatabaseRow,
 } from "@/server/repositories/teacher.repository";
 import { decryptLaravel } from "@/server/security/laravel-crypto";
 
 export type TeacherFilters = {
+  province?: string | null;
+  district?: string | null;
+  zonal?: string | null;
+  divisional?: string | null;
+  school?: string | null;
   subject?: string | null;
   gender?: string | null;
   teacherCategory?: string | null;
   medium?: string | null;
+};
+
+export type TeacherFilterOptions = {
+  provinces: string[];
+  districts: string[];
+  zonals: string[];
+  divisionals: string[];
+  schools: string[];
+  subjects: string[];
+  genders: string[];
+  teacherCategories: string[];
+  mediums: string[];
 };
 
 export type ListTeachersInput = {
@@ -41,6 +59,12 @@ function mapTeacher(row: TeacherDatabaseRow): Teacher {
     firstServiceDate: row.firstServiceDate,
     serviceYears: row.serviceYears === null ? null : Number(row.serviceYears),
   };
+}
+
+export async function listTeacherFilterOptions(
+  filters: TeacherFilters = {},
+): Promise<TeacherFilterOptions> {
+  return findTeacherFilterOptions(filters);
 }
 
 export async function listTeachers(

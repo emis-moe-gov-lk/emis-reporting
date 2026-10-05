@@ -13,6 +13,8 @@ export const schema = createSchema({
       databaseConnected: Boolean!
       "Returns paginated active teachers for development testing."
       teachers(page: Int = 1, limit: Int = 25, filters: TeacherFiltersInput): TeacherResult!
+      "Returns valid filter values for active teacher reports."
+      teacherFilterOptions(filters: TeacherFiltersInput): TeacherFilterOptions!
       "Returns paginated active principals for development testing."
       principals(page: Int = 1, limit: Int = 25): PrincipalResult!
     }

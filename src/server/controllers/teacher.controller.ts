@@ -1,8 +1,16 @@
 import "server-only";
-import { listTeachers, type ListTeachersInput } from "@/server/services/teacher/list-teachers.service";
+import {
+  listTeacherFilterOptions,
+  listTeachers,
+  type ListTeachersInput,
+  type TeacherFilters,
+} from "@/server/services/teacher/list-teachers.service";
 
 export const teacherController = {
   list(input: ListTeachersInput = {}) {
     return listTeachers(input);
+  },
+  filterOptions(filters: TeacherFilters) {
+    return listTeacherFilterOptions(filters);
   },
 };

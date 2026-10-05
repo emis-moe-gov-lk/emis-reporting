@@ -21,3 +21,19 @@ export const TEACHERS_QUERY = /* GraphQL */ `
     }
   }
 `;
+
+export const TEACHER_FILTER_OPTIONS_QUERY = /* GraphQL */ `
+  query TeacherFilterOptions($filters: TeacherFiltersInput) {
+    teacherFilterOptions(filters: $filters) {
+      provinces
+      districts
+      zonals
+      divisionals
+      schools
+      subjects
+      genders
+      teacherCategories
+      mediums
+    }
+  }
+`;

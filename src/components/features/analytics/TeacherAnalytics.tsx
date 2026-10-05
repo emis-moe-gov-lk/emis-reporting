@@ -12,7 +12,7 @@ import {
   type SearchColumn,
 } from "@/components/ui/analytics-filters";
 import { excelExport, printHtml } from "@/lib/exportHelpers";
-import { TEACHERS_QUERY } from "@/lib/graphql/queries/teachers";
+import { TEACHER_FILTER_OPTIONS_QUERY, TEACHERS_QUERY } from "@/lib/graphql/queries/teachers";
 
 type TeacherRow = {
   employeeId: string;
@@ -32,8 +32,29 @@ type TeachersPayload = {
   errors?: Array<{ message: string }>;
 };
 
-type FilterKey = "subject" | "gender" | "teacherCategory" | "medium";
+type FilterKey =
+  | "province"
+  | "district"
+  | "zonal"
+  | "divisional"
+  | "school"
+  | "subject"
+  | "gender"
+  | "teacherCategory"
+  | "medium";
 type FilterValues = Record<FilterKey, string>;
+
+type TeacherFilterOptions = {
+  provinces: string[];
+  districts: string[];
+  zonals: string[];
+  divisionals: string[];
+  schools: string[];
+  subjects: string[];
+  genders: string[];
+  teacherCategories: string[];
+  mediums: string[];
+};
 
 const columns = ["Teacher", "NIC", "School", "Zonal", "Subject", "Gender", "Category", "Medium", "Service years"];
 const searchColumns: SearchColumn[] = [
@@ -42,14 +63,18 @@ const searchColumns: SearchColumn[] = [
   { value: "school", label: "School Name" },
   { value: "zonal", label: "Zonal Office" },
 ];
-const emptyFilters: FilterValues = { subject: "", gender: "", teacherCategory: "", medium: "" };
+const emptyFilters: FilterValues = {
+  province: "",
+  district: "",
+  zonal: "",
+  divisional: "",
+  school: "",
+  subject: "",
+  gender: "",
+  teacherCategory: "",
+  medium: "",
+};
 const display = (value: string | number | null) => value ?? "—";
-
-function uniqueValues(rows: TeacherRow[], key: FilterKey): string[] {
-  return [...new Set(rows.map((row) => row[key]).filter((value): value is string => Boolean(value)))].sort(
-    (first, second) => first.localeCompare(second),
-  );
-}
 
 /** Displays live teacher records from the GraphQL API with the reporting filter UI. */
 export function TeacherAnalytics() {
@@ -57,6 +82,9 @@ export function TeacherAnalytics() {
   const [search, setSearch] = useState("");
   const [searchColumn, setSearchColumn] = useState(searchColumns[0].value);
   const [filters, setFilters] = useState<FilterValues>(emptyFilters);
+  const [filterOptions, setFilterOptions] = useState<TeacherFilterOptions>({
+    provinces: [], districts: [], zonals: [], divisionals: [], schools: [], subjects: [], genders: [], teacherCategories: [], mediums: [],
+  });
   const [teachers, setTeachers] = useState<TeacherRow[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -95,14 +123,45 @@ export function TeacherAnalytics() {
     return () => abortController.abort();
   }, [filters, page]);
 
+  useEffect(() => {
+    const abortController = new AbortController();
+    async function loadFilterOptions() {
+      try {
+        const response = await fetch("/api/graphql", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: TEACHER_FILTER_OPTIONS_QUERY, variables: { filters } }),
+          signal: abortController.signal,
+        });
+        const payload = (await response.json()) as {
+          data?: { teacherFilterOptions?: TeacherFilterOptions };
+          errors?: Array<{ message: string }>;
+        };
+        if (!response.ok || payload.errors?.length || !payload.data?.teacherFilterOptions) {
+          throw new Error(payload.errors?.[0]?.message ?? "Unable to load filters.");
+        }
+        setFilterOptions(payload.data.teacherFilterOptions);
+      } catch (cause) {
+        if ((cause as Error).name !== "AbortError") setError(cause instanceof Error ? cause.message : "Unable to load filters.");
+      }
+    }
+    void loadFilterOptions();
+    return () => abortController.abort();
+  }, [filters]);
+
   const filterDefinitions = useMemo<AnalyticsFilterDef[]>(
     () => [
-      { key: "subject", label: "Subject", options: uniqueValues(teachers, "subject"), allLabel: "All Subjects" },
-      { key: "gender", label: "Gender", options: uniqueValues(teachers, "gender"), allLabel: "All Genders" },
-      { key: "teacherCategory", label: "Category", options: uniqueValues(teachers, "teacherCategory"), allLabel: "All Categories" },
-      { key: "medium", label: "Medium", options: uniqueValues(teachers, "medium"), allLabel: "All Mediums" },
+      { key: "province", label: "Province", options: filterOptions.provinces, allLabel: "All Provinces" },
+      { key: "district", label: "District", options: filterOptions.districts, allLabel: "All Districts", disabled: !filters.province, disabledPlaceholder: "Select Province first" },
+      { key: "zonal", label: "Zonal", options: filterOptions.zonals, allLabel: "All Zonals", disabled: !filters.district, disabledPlaceholder: "Select District first" },
+      { key: "divisional", label: "Divisional", options: filterOptions.divisionals, allLabel: "All Divisionals", disabled: !filters.zonal, disabledPlaceholder: "Select Zonal first" },
+      { key: "school", label: "School", options: filterOptions.schools, allLabel: "All Schools", disabled: !filters.divisional, disabledPlaceholder: "Select Divisional first" },
+      { key: "subject", label: "Subject", options: filterOptions.subjects, allLabel: "All Subjects" },
+      { key: "gender", label: "Gender", options: filterOptions.genders, allLabel: "All Genders" },
+      { key: "teacherCategory", label: "Category", options: filterOptions.teacherCategories, allLabel: "All Categories" },
+      { key: "medium", label: "Medium", options: filterOptions.mediums, allLabel: "All Mediums" },
     ],
-    [teachers],
+    [filterOptions, filters.district, filters.divisional, filters.province, filters.zonal],
   );
 
   const filteredTeachers = useMemo(() => {
@@ -129,7 +188,14 @@ export function TeacherAnalytics() {
   ]);
 
   const updateFilter = (key: string, value: string) => {
-    setFilters((current) => ({ ...current, [key as FilterKey]: value }));
+    setFilters((current) => {
+      const next = { ...current, [key as FilterKey]: value };
+      if (key === "province") Object.assign(next, { district: "", zonal: "", divisional: "", school: "" });
+      if (key === "district") Object.assign(next, { zonal: "", divisional: "", school: "" });
+      if (key === "zonal") Object.assign(next, { divisional: "", school: "" });
+      if (key === "divisional") next.school = "";
+      return next;
+    });
     setPage(1);
   };
 
