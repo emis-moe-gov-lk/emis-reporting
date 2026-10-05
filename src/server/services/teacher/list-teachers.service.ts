@@ -8,7 +8,18 @@ import {
 } from "@/server/repositories/teacher.repository";
 import { decryptLaravel } from "@/server/security/laravel-crypto";
 
-export type ListTeachersInput = { page?: number; limit?: number };
+export type TeacherFilters = {
+  subject?: string | null;
+  gender?: string | null;
+  teacherCategory?: string | null;
+  medium?: string | null;
+};
+
+export type ListTeachersInput = {
+  page?: number;
+  limit?: number;
+  filters?: TeacherFilters | null;
+};
 
 function mapTeacher(row: TeacherDatabaseRow): Teacher {
   return {
@@ -44,9 +55,10 @@ export async function listTeachers(
     throw new AppError("limit must be between 1 and 100", 400, "limit");
   }
 
+  const filters = input.filters ?? {};
   const [total, rows] = await Promise.all([
-    countActiveTeachers(),
-    findActiveTeachers(limit, (page - 1) * limit),
+    countActiveTeachers(filters),
+    findActiveTeachers(limit, (page - 1) * limit, filters),
   ]);
   return {
     rows: rows.map(mapTeacher),

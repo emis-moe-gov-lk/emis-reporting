@@ -73,7 +73,7 @@ export function TeacherAnalytics() {
         const response = await fetch("/api/graphql", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: TEACHERS_QUERY, variables: { page, limit } }),
+          body: JSON.stringify({ query: TEACHERS_QUERY, variables: { page, limit, filters } }),
           signal: abortController.signal,
         });
         const payload = (await response.json()) as TeachersPayload;
@@ -93,7 +93,7 @@ export function TeacherAnalytics() {
     }
     void loadTeachers();
     return () => abortController.abort();
-  }, [page]);
+  }, [filters, page]);
 
   const filterDefinitions = useMemo<AnalyticsFilterDef[]>(
     () => [
@@ -117,11 +117,7 @@ export function TeacherAnalytics() {
               ? teacher.currentZonal
               : teacher.name;
       return (
-        (!query || searchTarget?.toLowerCase().includes(query)) &&
-        (!filters.subject || teacher.subject === filters.subject) &&
-        (!filters.gender || teacher.gender === filters.gender) &&
-        (!filters.teacherCategory || teacher.teacherCategory === filters.teacherCategory) &&
-        (!filters.medium || teacher.medium === filters.medium)
+        !query || searchTarget?.toLowerCase().includes(query)
       );
     });
   }, [filters, search, searchColumn, teachers]);
@@ -134,6 +130,7 @@ export function TeacherAnalytics() {
 
   const updateFilter = (key: string, value: string) => {
     setFilters((current) => ({ ...current, [key as FilterKey]: value }));
+    setPage(1);
   };
 
   return (
@@ -143,7 +140,7 @@ export function TeacherAnalytics() {
           <div>
             <h2 className="text-base font-semibold text-foreground">Teacher Analytics</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              {loading ? "Loading teachers…" : `${filteredTeachers.length} shown from ${total.toLocaleString()} active teachers`}
+              {loading ? "Loading teachers…" : `${filteredTeachers.length} shown from ${total.toLocaleString()} matching teachers`}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -171,7 +168,10 @@ export function TeacherAnalytics() {
             filters={filterDefinitions}
             filterValues={filters}
             onFilterChange={updateFilter}
-            onClearFilters={() => setFilters(emptyFilters)}
+            onClearFilters={() => {
+              setFilters(emptyFilters);
+              setPage(1);
+            }}
           />
         </div>
 
@@ -204,7 +204,7 @@ export function TeacherAnalytics() {
         </CardContent>
 
         <div className="flex items-center justify-between gap-3 border-t px-5 py-3">
-          <p className="text-xs text-muted-foreground">Page {page} of {Math.max(totalPages, 1)}. Search and filters apply to the displayed page.</p>
+          <p className="text-xs text-muted-foreground">Page {page} of {Math.max(totalPages, 1)}. Search applies to the displayed page.</p>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" disabled={loading || page === 1} onClick={() => setPage((current) => current - 1)}>Previous</Button>
             <Button variant="outline" size="sm" disabled={loading || page >= totalPages} onClick={() => setPage((current) => current + 1)}>Next</Button>

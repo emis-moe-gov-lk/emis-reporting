@@ -1,4 +1,11 @@
 export const teacherTypeDefs = /* GraphQL */ `
+  input TeacherFiltersInput {
+    subject: String
+    gender: String
+    teacherCategory: String
+    medium: String
+  }
+
   type TeacherResult {
     rows: [Teacher!]!
     total: Int!

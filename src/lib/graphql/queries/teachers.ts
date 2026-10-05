@@ -1,6 +1,6 @@
 export const TEACHERS_QUERY = /* GraphQL */ `
-  query MyQuery($page: Int!, $limit: Int!) {
-    teachers(page: $page, limit: $limit) {
+  query MyQuery($page: Int!, $limit: Int!, $filters: TeacherFiltersInput) {
+    teachers(page: $page, limit: $limit, filters: $filters) {
       total
       page
       limit

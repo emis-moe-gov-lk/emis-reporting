@@ -1,8 +1,9 @@
 import { teacherController } from "@/server/controllers/teacher.controller";
+import type { ListTeachersInput } from "@/server/services/teacher/list-teachers.service";
 
 export const teacherResolvers = {
   Query: {
-    teachers: (_parent: unknown, args: { page?: number; limit?: number }) =>
+    teachers: (_parent: unknown, args: ListTeachersInput) =>
       teacherController.list(args),
   },
 };

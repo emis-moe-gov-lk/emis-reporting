@@ -12,7 +12,7 @@ export const schema = createSchema({
       "Returns true when the configured MySQL database can be queried."
       databaseConnected: Boolean!
       "Returns paginated active teachers for development testing."
-      teachers(page: Int = 1, limit: Int = 25): TeacherResult!
+      teachers(page: Int = 1, limit: Int = 25, filters: TeacherFiltersInput): TeacherResult!
       "Returns paginated active principals for development testing."
       principals(page: Int = 1, limit: Int = 25): PrincipalResult!
     }

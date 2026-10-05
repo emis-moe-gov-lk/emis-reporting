@@ -1,6 +1,7 @@
 import "server-only";
 import type { RowDataPacket } from "mysql2/promise";
 import { getDb } from "@/server/database/db";
+import type { TeacherFilters } from "@/server/services/teacher/list-teachers.service";
 
 export type TeacherDatabaseRow = RowDataPacket & {
   employeeId: string;
@@ -22,12 +23,39 @@ export type TeacherDatabaseRow = RowDataPacket & {
   serviceYears: number | null;
 };
 
-export async function countActiveTeachers(): Promise<number> {
+function activeTeacherWhere(filters: TeacherFilters) {
+  const conditions = ["p.active_status = 1"];
+  const values: string[] = [];
+  const filterColumns: Array<[keyof TeacherFilters, string]> = [
+    ["subject", "s.name_en"],
+    ["gender", "g.gender_name"],
+    ["teacherCategory", "tc.name"],
+    ["medium", "m.name"],
+  ];
+
+  for (const [key, column] of filterColumns) {
+    const value = filters[key]?.trim();
+    if (value) {
+      conditions.push(`${column} = ?`);
+      values.push(value);
+    }
+  }
+
+  return { clause: conditions.join(" AND "), values };
+}
+
+export async function countActiveTeachers(filters: TeacherFilters = {}): Promise<number> {
+  const where = activeTeacherWhere(filters);
   const [rows] = await getDb().execute<RowDataPacket[]>(
     `SELECT COUNT(*) AS total
      FROM teachers t
      INNER JOIN people p ON p.people_id = t.employee_id
-     WHERE p.active_status = 1`,
+     LEFT JOIN subject_lists s ON s.subject_id = t.current_teaching_subject
+     LEFT JOIN gender_lists g ON g.gender_id = p.gender_id
+     LEFT JOIN teacher_categories tc ON tc.categories_id = t.teacher_category
+     LEFT JOIN medium_of_instructions m ON m.medium_id = t.appointment_medium
+     WHERE ${where.clause}`,
+    where.values,
   );
   return Number(rows[0]?.total ?? 0);
 }
@@ -35,7 +63,9 @@ export async function countActiveTeachers(): Promise<number> {
 export async function findActiveTeachers(
   limit: number,
   offset: number,
+  filters: TeacherFilters = {},
 ): Promise<TeacherDatabaseRow[]> {
+  const where = activeTeacherWhere(filters);
   const [rows] = await getDb().execute<TeacherDatabaseRow[]>(
     `SELECT
        t.employee_id AS employeeId,
@@ -71,10 +101,10 @@ export async function findActiveTeachers(
      LEFT JOIN gender_lists g ON g.gender_id = p.gender_id
      LEFT JOIN teacher_categories tc ON tc.categories_id = t.teacher_category
      LEFT JOIN medium_of_instructions m ON m.medium_id = t.appointment_medium
-     WHERE p.active_status = 1
+     WHERE ${where.clause}
      ORDER BY t.employee_id
      LIMIT ? OFFSET ?`,
-    [limit, offset],
+    [...where.values, limit, offset],
   );
   return rows;
 }
