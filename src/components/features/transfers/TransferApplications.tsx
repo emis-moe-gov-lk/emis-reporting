@@ -16,12 +16,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  TableToolbar,
-  ActiveFiltersRow,
-  ActiveFilterSelect,
-  useActiveFilters,
-  FilterDef,
-} from "@/components/ui/table-toolbar";
+  AnalyticsFilterBar,
+  type AnalyticsFilterDef,
+  type SearchColumn,
+} from "@/components/ui/analytics-filters";
 import { transferData } from "@/lib/mock/transfers";
 import { TransferKind, TransferApplication } from "@/types";
 import { excelExport, printHtml } from "@/lib/exportHelpers";
@@ -43,49 +41,72 @@ const statusBadge: Record<
 };
 
 const STATUS_OPTIONS = ["Full", "Partial", "Pending"];
+const PROVINCE_OPTIONS = ["Western", "Central", "Southern"];
+const ZONAL_OPTIONS = ["Colombo", "Homagama", "Piliyandala", "Kandy", "Galle", "Negombo", "Kurunegala"];
+
+/** Columns the search box can target — the first entry is the default. */
+const searchColumns: SearchColumn[] = [
+  { value: "name", label: "Teacher Name" },
+  { value: "nic", label: "NIC" },
+  { value: "school", label: "School Name" },
+  { value: "id", label: "Application ID" },
+];
 
 export function TransferApplications() {
   const [tab, setTab] = useState<TransferKind>("interzonal");
   const [selected, setSelected] = useState<TransferApplication | null>(null);
   const [search, setSearch] = useState("");
-  const filters = useActiveFilters();
+  const [searchColumn, setSearchColumn] = useState(searchColumns[0].value);
   const [province, setProvince] = useState("");
   const [zonal, setZonal] = useState("");
   const [status, setStatus] = useState("");
 
   const data = transferData[tab];
 
-  // ---- Available filters per tab ("+ Add Filter" menu) ----
-  const filterDefs: FilterDef[] = [
-    ...(tab === "interprov" ? [{ key: "province", label: "Province" }] : []),
-    ...(tab !== "interzonal" ? [{ key: "zonal", label: "Zonal" }] : []),
-    { key: "status", label: "Status" },
+  // ---- Available filters per tab ----
+  const filterDefs: AnalyticsFilterDef[] = [
+    ...(tab === "interprov"
+      ? [{ key: "province", label: "Province", options: PROVINCE_OPTIONS, allLabel: "All Provinces" }]
+      : []),
+    ...(tab !== "interzonal"
+      ? [{ key: "zonal", label: "Zonal", options: ZONAL_OPTIONS, allLabel: "All Zonals" }]
+      : []),
+    { key: "status", label: "Status", options: STATUS_OPTIONS, allLabel: "All Statuses" },
   ];
+
+  const filterValues: Record<string, string> = { province, zonal, status };
 
   function switchTab(value: string) {
     setTab(value as TransferKind);
-    filters.reset();
     setProvince("");
     setZonal("");
     setStatus("");
   }
 
-  function removeFilter(key: string) {
-    if (key === "province") setProvince("");
-    if (key === "zonal") setZonal("");
-    if (key === "status") setStatus("");
-    filters.remove(key);
-  }
+  const handleFilterChange = (key: string, value: string) => {
+    if (key === "province") setProvince(value);
+    if (key === "zonal") setZonal(value);
+    if (key === "status") setStatus(value);
+  };
 
-  // ---- Row filtering: search (name/NIC/school/application ID) + filters ----
+  const clearFilters = () => {
+    setProvince("");
+    setZonal("");
+    setStatus("");
+  };
+
+  // ---- Row filtering: column-targeted search + filters ----
   const query = search.trim().toLowerCase();
   const filteredRows = data.rows.filter((r) => {
-    const matchesSearch =
-      !query ||
-      r.name.toLowerCase().includes(query) ||
-      r.nic.toLowerCase().includes(query) ||
-      r.currentSchool.toLowerCase().includes(query) ||
-      r.id.toLowerCase().includes(query);
+    const searchTarget =
+      searchColumn === "nic"
+        ? r.nic
+        : searchColumn === "school"
+          ? r.currentSchool
+          : searchColumn === "id"
+            ? r.id
+            : r.name;
+    const matchesSearch = !query || searchTarget.toLowerCase().includes(query);
     return (
       matchesSearch &&
       (!province || r.targetProvince === province) &&
@@ -153,7 +174,7 @@ export function TransferApplications() {
         <TabsList>
           <TabsTrigger value="interzonal">Inter-Zonal</TabsTrigger>
           <TabsTrigger value="anotherzonal">Another Zonal</TabsTrigger>
-          <TabsTrigger value="interprov">Inter-Provincial</TabsTrigger>
+          <TabsTrigger value="interprov">Another-Provincial</TabsTrigger>
         </TabsList>
       </Tabs>
 
@@ -181,48 +202,24 @@ export function TransferApplications() {
           </div>
         </div>
 
-        {/* Search (left) + Add Filter (right) */}
-        <TableToolbar
-          searchPlaceholder="Search by name, NIC, school or application ID…"
-          searchValue={search}
-          onSearchChange={setSearch}
-          filters={filterDefs}
-          active={filters.active}
-          onAddFilter={filters.add}
-        />
-
-        {/* Added filters */}
-        {filters.active.length > 0 && (
-          <ActiveFiltersRow>
-            {filters.active.includes("province") && (
-              <ActiveFilterSelect
-                label="Province"
-                value={province}
-                onChange={setProvince}
-                options={["Western", "Central", "Southern"]}
-                onRemove={() => removeFilter("province")}
-              />
-            )}
-            {filters.active.includes("zonal") && (
-              <ActiveFilterSelect
-                label="Zonal"
-                value={zonal}
-                onChange={setZonal}
-                options={["Colombo", "Homagama", "Piliyandala", "Kandy", "Galle", "Negombo", "Kurunegala"]}
-                onRemove={() => removeFilter("zonal")}
-              />
-            )}
-            {filters.active.includes("status") && (
-              <ActiveFilterSelect
-                label="Status"
-                value={status}
-                onChange={setStatus}
-                options={STATUS_OPTIONS}
-                onRemove={() => removeFilter("status")}
-              />
-            )}
-          </ActiveFiltersRow>
-        )}
+        {/*
+          Search & filter bar — same pattern as Teacher Analytics: single search
+          field with in-field column chooser, Filters button, and a collapsible
+          panel holding this tab's filters.
+        */}
+        <div className="border-b px-5 py-3">
+          <AnalyticsFilterBar
+            searchValue={search}
+            onSearchValueChange={setSearch}
+            searchColumns={searchColumns}
+            searchColumn={searchColumn}
+            onSearchColumnChange={setSearchColumn}
+            filters={filterDefs}
+            filterValues={filterValues}
+            onFilterChange={handleFilterChange}
+            onClearFilters={clearFilters}
+          />
+        </div>
 
         {/* Data table — the primary focus */}
         <CardContent className="p-0">

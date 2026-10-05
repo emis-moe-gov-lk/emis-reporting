@@ -57,7 +57,8 @@ export function TransferDrawer({
       }}
     >
       {/* =====================================================
-          DRAWER
+          DRAWER — flush left edge: no shadow, no border strip,
+          no gap between the page overlay and the panel.
       ====================================================== */}
       <div
         className="
@@ -65,8 +66,9 @@ export function TransferDrawer({
           h-full
           w-full
           flex-col
+          border-l-0
           bg-card
-          shadow-2xl
+          shadow-none
 
           sm:w-[600px]
           lg:w-[720px]
