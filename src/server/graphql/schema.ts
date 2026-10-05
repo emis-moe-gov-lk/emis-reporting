@@ -9,7 +9,7 @@ import { principalResolvers } from "@/server/graphql/resolvers/principal.resolve
 export const schema = createSchema({
   typeDefs: [/* GraphQL */ `
     type Query {
-      "Returns true when the configured MySQL database can be queried."
+      "Returns true when the configured MySQL database can be queried; otherwise false."
       databaseConnected: Boolean!
       "Returns paginated active teachers for development testing."
       teachers(page: Int = 1, limit: Int = 25, filters: TeacherFiltersInput): TeacherResult!
