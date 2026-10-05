@@ -16,12 +16,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  TableToolbar,
-  ActiveFiltersRow,
-  ActiveFilterSelect,
-  useActiveFilters,
-  FilterDef,
-} from "@/components/ui/table-toolbar";
+  AnalyticsFilterBar,
+  type AnalyticsFilterDef,
+  type SearchColumn,
+} from "@/components/ui/analytics-filters";
 import { cadreReports } from "@/lib/mock/cadre";
 import { GenericRow } from "@/types";
 import { excelExport, printHtml } from "@/lib/exportHelpers";
@@ -51,27 +49,44 @@ function rowContains(row: GenericRow, value: string): boolean {
 export function CadreTabs() {
   const [key, setKey] = useState<Key>("cadre");
   const [search, setSearch] = useState("");
-  const filters = useActiveFilters();
+  const [searchColumn, setSearchColumn] = useState("");
   const [values, setValues] = useState<Record<string, string>>({});
 
   const report = cadreReports[key];
 
-  const filterDefs: FilterDef[] = report.filters.map((f) => ({ key: f, label: f }));
+  /** Identifier column used as the default search target (existing behaviour). */
+  const schoolColumn = report.cols.includes("School") ? "School" : "Level";
+
+  /** Search targets offered by the in-field column chooser, per report. */
+  const searchColumns: SearchColumn[] = [
+    { value: schoolColumn, label: schoolColumn === "School" ? "School Name" : "Level" },
+    ...(report.cols.includes("Subject")
+      ? [{ value: "Subject", label: "Subject" }]
+      : []),
+    ...(report.cols.includes("Post / subject")
+      ? [{ value: "Post / subject", label: "Post / Subject" }]
+      : []),
+  ];
+  const activeSearchColumn = searchColumns.some((c) => c.value === searchColumn)
+    ? searchColumn
+    : searchColumns[0].value;
+
+  const filterDefs: AnalyticsFilterDef[] = report.filters.map((f) => ({
+    key: f,
+    label: f,
+    options: optionsFor(f),
+    allLabel: `All ${f}s`,
+  }));
 
   function switchTab(value: string) {
     setKey(value as Key);
     setSearch("");
-    filters.reset();
+    setSearchColumn("");
     setValues({});
   }
 
   function setFilterValue(filterKey: string, value: string) {
     setValues((prev) => ({ ...prev, [filterKey]: value }));
-  }
-
-  function removeFilter(filterKey: string) {
-    setValues((prev) => ({ ...prev, [filterKey]: "" }));
-    filters.remove(filterKey);
   }
 
   /** Options for a filter: distinct column values, or static lists for geo filters. */
@@ -84,12 +99,11 @@ export function CadreTabs() {
     return [];
   }
 
-  // ---- Row filtering: search by school name + added filters ----
+  // ---- Row filtering: column-targeted search + selected filters ----
   const query = search.trim().toLowerCase();
-  const schoolColumn = report.cols.includes("School") ? "School" : "Level";
   const filteredRows = report.rows.filter((row) => {
     const matchesSearch =
-      !query || String(row[schoolColumn] ?? "").toLowerCase().includes(query);
+      !query || String(row[activeSearchColumn] ?? "").toLowerCase().includes(query);
     const matchesFilters = report.filters.every(
       (f) => !values[f] || rowContains(row, values[f])
     );
@@ -159,33 +173,24 @@ export function CadreTabs() {
           </div>
         </div>
 
-        {/* Search (left) + Add Filter (right) */}
-        <TableToolbar
-          searchPlaceholder="Search by school name…"
-          searchValue={search}
-          onSearchChange={setSearch}
-          filters={filterDefs}
-          active={filters.active}
-          onAddFilter={filters.add}
-        />
-
-        {/* Added filters */}
-        {filters.active.length > 0 && (
-          <ActiveFiltersRow>
-            {report.filters
-              .filter((f) => filters.active.includes(f))
-              .map((f) => (
-                <ActiveFilterSelect
-                  key={f}
-                  label={f}
-                  value={values[f] ?? ""}
-                  onChange={(v) => setFilterValue(f, v)}
-                  options={optionsFor(f)}
-                  onRemove={() => removeFilter(f)}
-                />
-              ))}
-          </ActiveFiltersRow>
-        )}
+        {/*
+          Search & filter bar — same pattern as Teacher Analytics: single search
+          field with in-field column chooser, Filters button, and a collapsible
+          panel holding this report's filters.
+        */}
+        <div className="border-b px-5 py-3">
+          <AnalyticsFilterBar
+            searchValue={search}
+            onSearchValueChange={setSearch}
+            searchColumns={searchColumns}
+            searchColumn={activeSearchColumn}
+            onSearchColumnChange={setSearchColumn}
+            filters={filterDefs}
+            filterValues={values}
+            onFilterChange={setFilterValue}
+            onClearFilters={() => setValues({})}
+          />
+        </div>
 
         {/* Data table — the primary focus */}
         <CardContent className="p-0">
