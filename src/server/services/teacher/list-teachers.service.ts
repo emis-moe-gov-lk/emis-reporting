@@ -27,6 +27,8 @@ function mapTeacher(row: TeacherDatabaseRow): Teacher {
     teacherCategory: row.teacherCategory,
     mediumId: row.mediumId,
     medium: row.medium,
+    firstServiceDate: row.firstServiceDate,
+    serviceYears: row.serviceYears === null ? null : Number(row.serviceYears),
   };
 }
 

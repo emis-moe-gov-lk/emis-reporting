@@ -23,5 +23,7 @@ export const teacherTypeDefs = /* GraphQL */ `
     teacherCategory: String
     mediumId: String
     medium: String
+    firstServiceDate: String
+    serviceYears: Int
   }
 `;

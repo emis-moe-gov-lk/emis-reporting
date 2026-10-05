@@ -1,0 +1,23 @@
+export const TEACHERS_QUERY = /* GraphQL */ `
+  query MyQuery($page: Int!, $limit: Int!) {
+    teachers(page: $page, limit: $limit) {
+      total
+      page
+      limit
+      totalPages
+      rows {
+        employeeId
+        nic
+        currentZonal
+        name
+        currentSchool
+        subject
+        gender
+        teacherCategory
+        medium
+        firstServiceDate
+        serviceYears
+      }
+    }
+  }
+`;

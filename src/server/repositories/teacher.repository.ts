@@ -18,6 +18,8 @@ export type TeacherDatabaseRow = RowDataPacket & {
   teacherCategory: string | null;
   mediumId: string | null;
   medium: string | null;
+  firstServiceDate: string | null;
+  serviceYears: number | null;
 };
 
 export async function countActiveTeachers(): Promise<number> {
@@ -50,9 +52,18 @@ export async function findActiveTeachers(
        t.teacher_category AS teacherCategoryId,
        tc.name AS teacherCategory,
        t.appointment_medium AS mediumId,
-       m.name AS medium
+       m.name AS medium,
+       svc.firstServiceDate AS firstServiceDate,
+       TIMESTAMPDIFF(YEAR, svc.firstServiceDate, CURDATE()) AS serviceYears
      FROM teachers t
      INNER JOIN people p ON p.people_id = t.employee_id
+     LEFT JOIN (
+       SELECT employee_id, MIN(first_appointment_date) AS firstServiceDate
+       FROM employer_appointments
+       WHERE first_appointment_date >= '1950-01-01'
+         AND first_appointment_date <= CURDATE()
+       GROUP BY employee_id
+     ) svc ON svc.employee_id = t.employee_id
      LEFT JOIN employer_current_appointments a ON a.employee_id = t.employee_id
      LEFT JOIN institutions i ON i.workplace_id = a.workplace_id
      LEFT JOIN zonal_education_offices z ON z.workplace_id = i.zeo_wp_id

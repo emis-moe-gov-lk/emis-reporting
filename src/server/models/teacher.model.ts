@@ -11,6 +11,8 @@ export type Teacher = Employee & {
   teacherCategory: string | null;
   mediumId: string | null;
   medium: string | null;
+  firstServiceDate: string | null;
+  serviceYears: number | null;
 };
 
 export type TeacherListResult = {

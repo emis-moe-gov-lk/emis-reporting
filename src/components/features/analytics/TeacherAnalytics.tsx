@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import { useCascadingGeo } from "./useCascadingGeo";
 import { geoHierarchy } from "@/lib/mock/geo";
 import { teachers } from "@/lib/mock/teachers";
 import { excelExport, printHtml } from "@/lib/exportHelpers";
+import { TEACHERS_QUERY } from "@/lib/graphql/queries/teachers";
 
 const columns = [
   "Teacher",
@@ -39,7 +40,167 @@ const columns = [
 
 const GEO_KEYS = ["province", "district", "zonal", "divisional", "school"] as const;
 
+type TeacherRow = {
+  employeeId: string;
+  nic: string | null;
+  currentZonal: string | null;
+  name: string | null;
+  currentSchool: string | null;
+  subject: string | null;
+  gender: string | null;
+  teacherCategory: string | null;
+  medium: string | null;
+  firstServiceDate: string | null;
+  serviceYears: number | null;
+};
+
+type TeachersPayload = {
+  data?: {
+    teachers?: {
+      total: number;
+      totalPages: number;
+      rows: TeacherRow[];
+    };
+  };
+  errors?: Array<{ message: string }>;
+};
+
+const liveColumns = [
+  "Teacher",
+  "NIC",
+  "School",
+  "Zonal",
+  "Subject",
+  "Gender",
+  "Category",
+  "Medium",
+  "Service years",
+];
+
+const display = (value: string | number | null) => value ?? "—";
+
+/** Displays live teacher records loaded from the GraphQL API. */
 export function TeacherAnalytics() {
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [teachers, setTeachers] = useState<TeacherRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const limit = 25;
+
+  useEffect(() => {
+    const abortController = new AbortController();
+    async function loadTeachers() {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch("/api/graphql", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: TEACHERS_QUERY, variables: { page, limit } }),
+          signal: abortController.signal,
+        });
+        const payload = (await response.json()) as TeachersPayload;
+        if (!response.ok || payload.errors?.length || !payload.data?.teachers) {
+          throw new Error(payload.errors?.[0]?.message ?? "Unable to load teachers.");
+        }
+        setTeachers(payload.data.teachers.rows);
+        setTotal(payload.data.teachers.total);
+        setTotalPages(payload.data.teachers.totalPages);
+      } catch (cause) {
+        if ((cause as Error).name !== "AbortError") {
+          setError(cause instanceof Error ? cause.message : "Unable to load teachers.");
+        }
+      } finally {
+        if (!abortController.signal.aborted) setLoading(false);
+      }
+    }
+    void loadTeachers();
+    return () => abortController.abort();
+  }, [page]);
+
+  const filteredTeachers = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return teachers;
+    return teachers.filter((teacher) =>
+      [teacher.name, teacher.nic, teacher.currentSchool, teacher.currentZonal]
+        .filter((value): value is string => Boolean(value))
+        .some((value) => value.toLowerCase().includes(query)),
+    );
+  }, [search, teachers]);
+
+  const exportRows = filteredTeachers.map((teacher) => [
+    display(teacher.name), display(teacher.nic), display(teacher.currentSchool),
+    display(teacher.currentZonal), display(teacher.subject), display(teacher.gender),
+    display(teacher.teacherCategory), display(teacher.medium), display(teacher.serviceYears),
+  ]);
+
+  return (
+    <div className="w-full">
+      <Card>
+        <div className="flex flex-col gap-3 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Teacher Analytics</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {loading ? "Loading teachers…" : `${total.toLocaleString()} active teachers`}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="outline" size="sm" disabled={loading} onClick={() => excelExport("teacher-analytics", [liveColumns, ...exportRows])}>
+              <Download /> Excel (page)
+            </Button>
+            <Button variant="outline" size="sm" disabled={loading} onClick={() => printHtml("Teacher Analytics", `<table><tr>${liveColumns.map((column) => `<th>${column}</th>`).join("")}</tr>${exportRows.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`).join("")}</table>`)}>
+              <Download /> PDF (page)
+            </Button>
+          </div>
+        </div>
+
+        <TableToolbar searchPlaceholder="Search this page by name, NIC, school or zonal…" searchValue={search} onSearchChange={setSearch} filters={[]} active={[]} onAddFilter={() => undefined} />
+
+        <CardContent className="p-0">
+          <Table className="min-w-[820px]">
+            <TableHeader>
+              <TableRow className="bg-muted/50 hover:bg-muted/50">
+                {liveColumns.map((column) => <TableHead key={column}>{column}</TableHead>)}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {loading && <TableRow><TableCell colSpan={liveColumns.length} className="py-10 text-center text-muted-foreground">Loading teacher data…</TableCell></TableRow>}
+              {!loading && error && <TableRow><TableCell colSpan={liveColumns.length} className="py-10 text-center text-destructive">{error}</TableCell></TableRow>}
+              {!loading && !error && filteredTeachers.map((teacher) => (
+                <TableRow key={teacher.employeeId}>
+                  <TableCell className="font-medium text-foreground">{display(teacher.name)}</TableCell>
+                  <TableCell className="text-muted-foreground">{display(teacher.nic)}</TableCell>
+                  <TableCell className="text-muted-foreground">{display(teacher.currentSchool)}</TableCell>
+                  <TableCell className="text-muted-foreground">{display(teacher.currentZonal)}</TableCell>
+                  <TableCell className="text-muted-foreground">{display(teacher.subject)}</TableCell>
+                  <TableCell className="text-muted-foreground">{display(teacher.gender)}</TableCell>
+                  <TableCell className="text-muted-foreground">{display(teacher.teacherCategory)}</TableCell>
+                  <TableCell className="text-muted-foreground">{display(teacher.medium)}</TableCell>
+                  <TableCell className="text-muted-foreground">{display(teacher.serviceYears)}</TableCell>
+                </TableRow>
+              ))}
+              {!loading && !error && filteredTeachers.length === 0 && <TableRow><TableCell colSpan={liveColumns.length} className="py-10 text-center text-muted-foreground">No teachers match your search on this page.</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+        </CardContent>
+
+        <div className="flex items-center justify-between gap-3 border-t px-5 py-3">
+          <p className="text-xs text-muted-foreground">Page {page} of {Math.max(totalPages, 1)}. Search applies to the displayed page.</p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" disabled={loading || page === 1} onClick={() => setPage((current) => current - 1)}>Previous</Button>
+            <Button variant="outline" size="sm" disabled={loading || page >= totalPages} onClick={() => setPage((current) => current + 1)}>Next</Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+/** Legacy mock-data view retained temporarily while its filter UI is redesigned for database filters. */
+function MockTeacherAnalytics() {
   const geo = useCascadingGeo(geoHierarchy);
   const filters = useActiveFilters();
   const [search, setSearch] = useState("");
