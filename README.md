@@ -61,6 +61,37 @@ A successful connection returns `{"data":{"databaseConnected":true}}`.
 A failed query returns a masked GraphQL error; check the server terminal for
 the underlying connection error. Restart the dev server after changing settings.
 
+For the initial teacher-data test, use the read-only endpoint
+`GET /api/v1/employees?type=teacher&page=1&limit=25`. The `type=teacher`
+parameter is required and `limit` is capped at 100. The endpoint returns
+teacher placement and reference data with pagination. Names and NICs are
+decrypted server-side with the original Laravel `APP_KEY`. If the key is
+missing or invalid, those fields remain `null`.
+
+GraphiQL also supports the teacher query:
+
+```graphql
+query Teachers {
+  teachers(page: 1, limit: 25) {
+    total
+    page
+    limit
+    totalPages
+    rows {
+      employeeId
+      name
+      nic
+      currentSchool
+      currentZonal
+      subject
+      gender
+      teacherCategory
+      medium
+    }
+  }
+}
+```
+
 Backend files:
 
 - `src/server/db.ts`: lazy, shared MySQL connection pool.
