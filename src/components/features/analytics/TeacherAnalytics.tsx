@@ -14,16 +14,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  TableToolbar,
-  ActiveFiltersRow,
-  ActiveFilterSelect,
-  useActiveFilters,
-  FilterDef,
-} from "@/components/ui/table-toolbar";
+  AnalyticsFilterBar,
+  type AnalyticsFilterDef,
+  type SearchColumn,
+} from "@/components/ui/analytics-filters";
 import { useCascadingGeo } from "./useCascadingGeo";
 import { geoHierarchy } from "@/lib/mock/geo";
 import { teachers } from "@/lib/mock/teachers";
 import { excelExport, printHtml } from "@/lib/exportHelpers";
+import type { Teacher } from "@/types";
 
 const columns = [
   "Teacher",
@@ -37,43 +36,23 @@ const columns = [
   "Service years",
 ];
 
-const GEO_KEYS = ["province", "district", "zonal", "divisional", "school"] as const;
+/** Columns the search box can target — the first entry is the default. */
+const searchColumns: SearchColumn[] = [
+  { value: "name", label: "Teacher Name" },
+  { value: "nic", label: "NIC" },
+  { value: "school", label: "School Name" },
+];
 
 export function TeacherAnalytics() {
   const geo = useCascadingGeo(geoHierarchy);
-  const filters = useActiveFilters();
   const [search, setSearch] = useState("");
+  const [searchColumn, setSearchColumn] = useState(searchColumns[0].value);
   const [subject, setSubject] = useState("");
   const [gender, setGender] = useState("");
   const [category, setCategory] = useState("");
   const [medium, setMedium] = useState("");
 
   const provinces = Object.keys(geoHierarchy);
-
-  // ---- Available filters for the "+ Add Filter" menu (cascade-gated) ----
-  const filterDefs: FilterDef[] = [
-    { key: "province", label: "Province" },
-    { key: "district", label: "District", disabled: !geo.values.province },
-    { key: "zonal", label: "Zonal", disabled: !geo.values.district },
-    { key: "divisional", label: "Divisional", disabled: !geo.values.zonal },
-    { key: "school", label: "School", disabled: !geo.values.divisional },
-    { key: "subject", label: "Subject", disabled: !geo.values.district },
-    { key: "gender", label: "Gender", disabled: !geo.values.district },
-    { key: "category", label: "Category", disabled: !geo.values.district },
-    { key: "medium", label: "Medium", disabled: !geo.values.district },
-  ];
-
-  // ---- Removal: clearing a geo level cascades through its children ----
-  function removeGeo(key: string) {
-    const idx = GEO_KEYS.indexOf(key as (typeof GEO_KEYS)[number]);
-    const drop = GEO_KEYS.slice(idx);
-    if (key === "province") geo.setProvince("");
-    if (key === "district") geo.setDistrict("");
-    if (key === "zonal") geo.setZonal("");
-    if (key === "divisional") geo.setDivisional("");
-    if (key === "school") geo.setSchool("");
-    filters.removeMany(drop);
-  }
 
   // ---- Dynamic title from the selected geographic filters ----
   const titleParts = [
@@ -85,16 +64,125 @@ export function TeacherAnalytics() {
   ].filter(Boolean);
   const title = titleParts.length > 0 ? titleParts.join(" - ") : "All Provinces";
 
-  // ---- Row filtering: search + attribute filters ----
+  // ---- Filter panel definition: geo cascade first, then attribute filters ----
+  const filterDefs: AnalyticsFilterDef[] = [
+    { key: "province", label: "Province", options: provinces, allLabel: "All Provinces" },
+    {
+      key: "district",
+      label: "District",
+      options: geo.options.districts,
+      allLabel: "All Districts",
+      disabled: !geo.values.province,
+      disabledPlaceholder: "Select Province first",
+    },
+    {
+      key: "zonal",
+      label: "Zonal",
+      options: geo.options.zones,
+      allLabel: "All Zonals",
+      disabled: !geo.values.district,
+      disabledPlaceholder: "Select District first",
+    },
+    {
+      key: "divisional",
+      label: "Divisional",
+      options: geo.options.divisions,
+      allLabel: "All Divisions",
+      disabled: !geo.values.zonal,
+      disabledPlaceholder: "Select Zonal first",
+    },
+    {
+      key: "school",
+      label: "School",
+      options: geo.options.schools,
+      allLabel: "All Schools",
+      disabled: !geo.values.divisional,
+      disabledPlaceholder: "Select Divisional first",
+    },
+    // Attribute filters stay independent of the geographic hierarchy.
+    { key: "subject", label: "Subject", options: ["Mathematics", "Science", "English"], allLabel: "All Subjects" },
+    { key: "gender", label: "Gender", options: ["Female", "Male"], allLabel: "All Genders" },
+    { key: "category", label: "Category", options: ["1AB", "1C"], allLabel: "All Categories" },
+    { key: "medium", label: "Medium", options: ["Sinhala", "Tamil", "English"], allLabel: "All Mediums" },
+  ];
+
+  const filterValues: Record<string, string> = {
+    province: geo.values.province,
+    district: geo.values.district,
+    zonal: geo.values.zonal,
+    divisional: geo.values.divisional,
+    school: geo.values.school,
+    subject,
+    gender,
+    category,
+    medium,
+  };
+
+  /**
+   * The geo hook's setters already clear every level below the one being
+   * changed; attribute filters are never touched by geographic changes.
+   */
+  const handleFilterChange = (key: string, value: string) => {
+    switch (key) {
+      case "province":
+        geo.setProvince(value);
+        break;
+      case "district":
+        geo.setDistrict(value);
+        break;
+      case "zonal":
+        geo.setZonal(value);
+        break;
+      case "divisional":
+        geo.setDivisional(value);
+        break;
+      case "school":
+        geo.setSchool(value);
+        break;
+      case "subject":
+        setSubject(value);
+        break;
+      case "gender":
+        setGender(value);
+        break;
+      case "category":
+        setCategory(value);
+        break;
+      case "medium":
+        setMedium(value);
+        break;
+    }
+  };
+
+  const clearFilters = () => {
+    geo.setProvince(""); // cascades: clears District, Zonal, Divisional and School
+    setSubject("");
+    setGender("");
+    setCategory("");
+    setMedium("");
+  };
+
+  // ---- Row filtering: column-targeted search + geo cascade + attributes ----
   const query = search.trim().toLowerCase();
+
+  const matchesGeo = (t: Teacher): boolean => {
+    const { province, district, zonal, school } = geo.values;
+    if (!province) return true;
+    if (school) return t.school === school;
+    // A divisional selection always sits under exactly one zonal.
+    if (zonal) return t.zonal === zonal;
+    const districts = geoHierarchy[province] ?? {};
+    if (district) return Object.keys(districts[district] ?? {}).includes(t.zonal);
+    return Object.values(districts).some((d) => Object.keys(d).includes(t.zonal));
+  };
+
   const filteredTeachers = teachers.filter((t) => {
-    const matchesSearch =
-      !query ||
-      t.name.toLowerCase().includes(query) ||
-      t.nic.toLowerCase().includes(query) ||
-      t.school.toLowerCase().includes(query);
+    const searchTarget =
+      searchColumn === "nic" ? t.nic : searchColumn === "school" ? t.school : t.name;
+    const matchesSearch = !query || searchTarget.toLowerCase().includes(query);
     return (
       matchesSearch &&
+      matchesGeo(t) &&
       (!subject || t.subject === subject) &&
       (!gender || t.gender === gender) &&
       (!category || t.category === category) &&
@@ -115,8 +203,6 @@ export function TeacherAnalytics() {
       t.serviceYears,
     ]);
   }
-
-  const hasActiveFilters = filters.active.length > 0;
 
   return (
     <div className="w-full">
@@ -171,114 +257,25 @@ export function TeacherAnalytics() {
           </div>
         </div>
 
-        {/* Search (left) + Add Filter (right) */}
-        <TableToolbar
-          searchPlaceholder="Search by teacher name, NIC or school…"
-          searchValue={search}
-          onSearchChange={setSearch}
-          filters={filterDefs}
-          active={filters.active}
-          onAddFilter={filters.add}
-        />
-
-        {/* Added filters */}
-        {hasActiveFilters && (
-          <ActiveFiltersRow>
-            {filters.active.includes("province") && (
-              <ActiveFilterSelect
-                label="Province"
-                value={geo.values.province}
-                onChange={geo.setProvince}
-                options={provinces}
-                onRemove={() => removeGeo("province")}
-              />
-            )}
-            {filters.active.includes("district") && (
-              <ActiveFilterSelect
-                label="District"
-                value={geo.values.district}
-                onChange={geo.setDistrict}
-                options={geo.options.districts}
-                onRemove={() => removeGeo("district")}
-              />
-            )}
-            {filters.active.includes("zonal") && (
-              <ActiveFilterSelect
-                label="Zonal"
-                value={geo.values.zonal}
-                onChange={geo.setZonal}
-                options={geo.options.zones}
-                onRemove={() => removeGeo("zonal")}
-              />
-            )}
-            {filters.active.includes("divisional") && (
-              <ActiveFilterSelect
-                label="Divisional"
-                value={geo.values.divisional}
-                onChange={geo.setDivisional}
-                options={geo.options.divisions}
-                onRemove={() => removeGeo("divisional")}
-              />
-            )}
-            {filters.active.includes("school") && (
-              <ActiveFilterSelect
-                label="School"
-                value={geo.values.school}
-                onChange={geo.setSchool}
-                options={geo.options.schools}
-                onRemove={() => removeGeo("school")}
-              />
-            )}
-            {filters.active.includes("subject") && (
-              <ActiveFilterSelect
-                label="Subject"
-                value={subject}
-                onChange={setSubject}
-                options={["Mathematics", "Science", "English"]}
-                onRemove={() => {
-                  setSubject("");
-                  filters.remove("subject");
-                }}
-              />
-            )}
-            {filters.active.includes("gender") && (
-              <ActiveFilterSelect
-                label="Gender"
-                value={gender}
-                onChange={setGender}
-                options={["Female", "Male"]}
-                onRemove={() => {
-                  setGender("");
-                  filters.remove("gender");
-                }}
-              />
-            )}
-            {filters.active.includes("category") && (
-              <ActiveFilterSelect
-                label="Category"
-                value={category}
-                onChange={setCategory}
-                options={["1AB", "1C"]}
-                onRemove={() => {
-                  setCategory("");
-                  filters.remove("category");
-                }}
-              />
-            )}
-            {filters.active.includes("medium") && (
-              <ActiveFilterSelect
-                label="Medium"
-                value={medium}
-                onChange={setMedium}
-                options={["Sinhala", "Tamil", "English"]}
-                onRemove={() => {
-                  setMedium("");
-                  filters.remove("medium");
-                }}
-              />
-            )}
-          </ActiveFiltersRow>
-        )}
+        {/*
+          Search & filter bar — a single search field with an in-field column
+          chooser, a Filters button, and a collapsible panel holding the
+          Province → District → Zonal → Divisional → School cascade plus the
+          independent Subject / Gender / Category / Medium filters.
+        */}
+        <div className="border-b px-5 py-3">
+          <AnalyticsFilterBar
+            searchValue={search}
+            onSearchValueChange={setSearch}
+            searchColumns={searchColumns}
+            searchColumn={searchColumn}
+            onSearchColumnChange={setSearchColumn}
+            filters={filterDefs}
+            filterValues={filterValues}
+            onFilterChange={handleFilterChange}
+            onClearFilters={clearFilters}
+          />
+        </div>
 
         {/* Data table — the primary focus */}
         <CardContent className="p-0">
@@ -320,8 +317,8 @@ export function TeacherAnalytics() {
 
         <div className="border-t px-5 py-3">
           <p className="text-xs text-muted-foreground">
-            Setting Zonal or Divisional above narrows this same list further — it always
-            shows individual teachers, never a summary row.
+            Pick a Province to unlock District, then Zonal, Divisional and School — each
+            level stays visible but disabled until the one above it is selected.
           </p>
         </div>
       </Card>
