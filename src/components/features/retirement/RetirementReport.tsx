@@ -14,12 +14,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  TableToolbar,
-  ActiveFiltersRow,
-  ActiveFilterSelect,
-  useActiveFilters,
-  FilterDef,
-} from "@/components/ui/table-toolbar";
+  AnalyticsFilterBar,
+  type AnalyticsFilterDef,
+  type SearchColumn,
+} from "@/components/ui/analytics-filters";
 import { retireGeo } from "@/lib/mock/geo";
 import { retirementRows, bandFor, serviceBands } from "@/lib/mock/retirement";
 import { excelExport, printHtml } from "@/lib/exportHelpers";
@@ -35,52 +33,84 @@ const columns = [
   "55 completed date",
 ];
 
+/** Columns the search box can target — the first entry is the default. */
+const searchColumns: SearchColumn[] = [
+  { value: "name", label: "Teacher Name" },
+  { value: "nic", label: "NIC" },
+  { value: "school", label: "School Name" },
+];
+
 export function RetirementReport() {
-  const filters = useActiveFilters();
   const [search, setSearch] = useState("");
+  const [searchColumn, setSearchColumn] = useState(searchColumns[0].value);
   const [province, setProvince] = useState("");
   const [zonal, setZonal] = useState("");
   const [school, setSchool] = useState("");
   const [band, setBand] = useState("");
 
+  // ---- Geographic cascade: province -> zonal -> school ----
   const provinces = Object.keys(retireGeo);
   const zones = province ? Object.keys(retireGeo[province]) : [];
   const schools = province && zonal ? retireGeo[province][zonal] : [];
 
-  const filterDefs: FilterDef[] = [
-    { key: "province", label: "Province" },
-    { key: "zonal", label: "Zonal", disabled: !province },
-    { key: "school", label: "School", disabled: !zonal },
-    { key: "band", label: "Service band" },
+  const filterDefs: AnalyticsFilterDef[] = [
+    { key: "province", label: "Province", options: provinces, allLabel: "All Provinces" },
+    {
+      key: "zonal",
+      label: "Zonal",
+      options: zones,
+      allLabel: "All Zonals",
+      disabled: !province,
+      disabledPlaceholder: "Select Province first",
+    },
+    {
+      key: "school",
+      label: "School",
+      options: schools,
+      allLabel: "All Schools",
+      disabled: !zonal,
+      disabledPlaceholder: "Select Zonal first",
+    },
+    // Independent of the geographic hierarchy.
+    { key: "band", label: "Service band", options: serviceBands, allLabel: "All Bands" },
   ];
 
-  function removeFilter(key: string) {
-    if (key === "province") {
-      setProvince("");
-      setZonal("");
-      setSchool("");
-      filters.removeMany(["province", "zonal", "school"]);
-      return;
-    }
-    if (key === "zonal") {
-      setZonal("");
-      setSchool("");
-      filters.removeMany(["zonal", "school"]);
-      return;
-    }
-    if (key === "school") setSchool("");
-    if (key === "band") setBand("");
-    filters.remove(key);
-  }
+  const filterValues: Record<string, string> = { province, zonal, school, band };
 
-  // ---- Row filtering: search (name/NIC/school) + added filters ----
+  /** Changing a geographic level clears every level below it, never the band. */
+  const handleFilterChange = (key: string, value: string) => {
+    switch (key) {
+      case "province":
+        setProvince(value);
+        setZonal("");
+        setSchool("");
+        break;
+      case "zonal":
+        setZonal(value);
+        setSchool("");
+        break;
+      case "school":
+        setSchool(value);
+        break;
+      case "band":
+        setBand(value);
+        break;
+    }
+  };
+
+  const clearFilters = () => {
+    setProvince("");
+    setZonal("");
+    setSchool("");
+    setBand("");
+  };
+
+  // ---- Row filtering: column-targeted search + geo cascade + band ----
   const query = search.trim().toLowerCase();
   const filteredRows = retirementRows.filter((r) => {
-    const matchesSearch =
-      !query ||
-      r.name.toLowerCase().includes(query) ||
-      r.nic.toLowerCase().includes(query) ||
-      r.school.toLowerCase().includes(query);
+    const searchTarget =
+      searchColumn === "nic" ? r.nic : searchColumn === "school" ? r.school : r.name;
+    const matchesSearch = !query || searchTarget.toLowerCase().includes(query);
     return (
       matchesSearch &&
       (!province || r.province === province) &&
@@ -180,64 +210,25 @@ export function RetirementReport() {
           </div>
         </div>
 
-        {/* Search (left) + Add Filter (right) */}
-        <TableToolbar
-          searchPlaceholder="Search by teacher name, NIC or school…"
-          searchValue={search}
-          onSearchChange={setSearch}
-          filters={filterDefs}
-          active={filters.active}
-          onAddFilter={filters.add}
-        />
-
-        {/* Added filters */}
-        {filters.active.length > 0 && (
-          <ActiveFiltersRow>
-            {filters.active.includes("province") && (
-              <ActiveFilterSelect
-                label="Province"
-                value={province}
-                onChange={(v) => {
-                  setProvince(v);
-                  setZonal("");
-                  setSchool("");
-                }}
-                options={provinces}
-                onRemove={() => removeFilter("province")}
-              />
-            )}
-            {filters.active.includes("zonal") && (
-              <ActiveFilterSelect
-                label="Zonal"
-                value={zonal}
-                onChange={(v) => {
-                  setZonal(v);
-                  setSchool("");
-                }}
-                options={zones}
-                onRemove={() => removeFilter("zonal")}
-              />
-            )}
-            {filters.active.includes("school") && (
-              <ActiveFilterSelect
-                label="School"
-                value={school}
-                onChange={setSchool}
-                options={schools}
-                onRemove={() => removeFilter("school")}
-              />
-            )}
-            {filters.active.includes("band") && (
-              <ActiveFilterSelect
-                label="Service band"
-                value={band}
-                onChange={setBand}
-                options={serviceBands}
-                onRemove={() => removeFilter("band")}
-              />
-            )}
-          </ActiveFiltersRow>
-        )}
+        {/*
+          Search & filter bar — same pattern as Teacher Analytics: single search
+          field with in-field column chooser, Filters button, and a collapsible
+          panel holding the Province → Zonal → School cascade plus the
+          independent Service band filter.
+        */}
+        <div className="border-b px-5 py-3">
+          <AnalyticsFilterBar
+            searchValue={search}
+            onSearchValueChange={setSearch}
+            searchColumns={searchColumns}
+            searchColumn={searchColumn}
+            onSearchColumnChange={setSearchColumn}
+            filters={filterDefs}
+            filterValues={filterValues}
+            onFilterChange={handleFilterChange}
+            onClearFilters={clearFilters}
+          />
+        </div>
 
         {/* Data table — the primary focus */}
         <CardContent className="p-0">
