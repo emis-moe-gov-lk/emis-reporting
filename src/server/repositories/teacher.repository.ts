@@ -73,6 +73,16 @@ function activeTeacherWhere(
     }
   }
 
+  const search = filters.search?.trim();
+  if (search && filters.searchColumn === "zonal") {
+    conditions.push("z.name LIKE ?");
+    values.push(`%${search}%`);
+  }
+  if (search && filters.searchColumn === "school") {
+    conditions.push("i.name LIKE ?");
+    values.push(`%${search}%`);
+  }
+
   return { clause: conditions.join(" AND "), values };
 }
 
