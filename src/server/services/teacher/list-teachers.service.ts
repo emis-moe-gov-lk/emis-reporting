@@ -19,6 +19,8 @@ export type TeacherFilters = {
   gender?: string | null;
   teacherCategory?: string | null;
   medium?: string | null;
+  search?: string | null;
+  searchColumn?: string | null;
 };
 
 export type TeacherFilterOptions = {
