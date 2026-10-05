@@ -73,7 +73,7 @@ export function TableToolbar({
   return (
     <div className={cn("flex items-center justify-between gap-3 border-b px-5 py-3", className)}>
       {/* Search — left */}
-      <div className="relative w-full max-w-xs">
+      <div className="relative w-full max-w-[600px]">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={searchValue}
@@ -130,6 +130,8 @@ export function ActiveFiltersRow({ children }: { children: ReactNode }) {
  * A labelled dropdown filter with an ✕ remove button. The label + filter icon
  * make it obvious this is a filter; ✕ removes it from the active filter row.
  * Selecting the "All" option reports "" through onChange.
+ * When `disabled` is set the control stays visible but cannot be changed —
+ * used by the cascading geo chain where a level unlocks only after its parent.
  */
 export function ActiveFilterSelect({
   label,
@@ -139,6 +141,7 @@ export function ActiveFilterSelect({
   onRemove,
   placeholder,
   className,
+  disabled,
 }: {
   label: string;
   value?: string;
@@ -147,11 +150,12 @@ export function ActiveFilterSelect({
   onRemove: () => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 }) {
   const allLabel = placeholder ?? "All";
 
   return (
-    <div className={cn("flex items-end gap-1", className)}>
+    <div className={cn("flex items-end gap-1", disabled && "opacity-50", className)}>
       <div className="flex flex-col gap-1">
         <Label className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           <ListFilter className="h-3 w-3" />
@@ -160,6 +164,7 @@ export function ActiveFilterSelect({
         <Select
           value={value ? value : ALL}
           onValueChange={(v) => onChange(v === ALL ? "" : v)}
+          disabled={disabled}
         >
           <SelectTrigger className="h-8 w-[160px] text-[13px]">
             <SelectValue placeholder={allLabel} />
@@ -174,15 +179,17 @@ export function ActiveFilterSelect({
           </SelectContent>
         </Select>
       </div>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onRemove}
-        aria-label={`Remove ${label} filter`}
-        className="h-8 w-8 text-muted-foreground hover:text-destructive"
-      >
-        <X className="h-3.5 w-3.5" />
-      </Button>
+      {!disabled && (
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={onRemove}
+          aria-label={`Remove ${label} filter`}
+          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+        >
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      )}
     </div>
   );
 }

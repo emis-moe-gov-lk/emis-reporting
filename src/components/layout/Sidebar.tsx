@@ -49,34 +49,30 @@ export function Sidebar() {
       {/* Ministry Header */}
       <div className="border-b px-4 py-5">
         <div className="flex items-center gap-3">
-          {/* Sri Lanka National Emblem */}
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center">
+          {/* Sri Lanka National Emblem — kept small so the names stay the focus */}
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center">
             <Image
               src="/images/Emblem_of_Sri_Lanka.svg"
               alt="Sri Lanka National Emblem"
-              width={80}
-              height={80}
-              className="h-20 w-20 object-contain"
+              width={48}
+              height={48}
+              className="h-12 w-12 object-contain"
               priority
             />
           </div>
 
-          {/* Ministry Names */}
-          <div className="min-w-0 flex-1">
-            <div className="text-[15px] font-bold leading-tight text-foreground">
-              Ministry of Education
+          {/* Ministry Names — one uniform size across all three languages */}
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="text-[12px] font-semibold leading-tight text-foreground">
+              Ministry of Education, Sri Lanka
             </div>
 
-            <div className="mt-1 text-[11px] font-medium leading-tight text-muted-foreground">
-              අධ්‍යාපන අමාත්‍යාංශය
+            <div className="text-[12px] font-semibold leading-tight text-foreground">
+              අධ්‍යාපන අමාත්‍යාංශය, ශ්‍රී ලංකාව
             </div>
 
-            <div className="mt-1 text-[11px] font-medium leading-tight text-muted-foreground">
-              கல்வி அமைச்சு
-            </div>
-
-            <div className="mt-1 text-[10.5px] text-muted-foreground">
-              Sri Lanka
+            <div className="text-[12px] font-semibold leading-tight text-foreground">
+              கல்வி அமைச்சு, இலங்கை
             </div>
           </div>
         </div>
