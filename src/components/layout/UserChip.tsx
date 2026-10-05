@@ -24,11 +24,11 @@ export function UserChip({ name = "A. Perera", role = "Ministry Admin" }: { name
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-[12px] font-bold text-primary-foreground">
           {initials}
         </div>
-        <div className="text-left">
+        <div className="hidden text-left sm:block">
           <div className="text-[13px] font-semibold leading-tight text-foreground">{name}</div>
           <div className="text-[11px] leading-tight text-muted-foreground">{role}</div>
         </div>
-        <ChevronDown size={14} className="text-muted-foreground" />
+        <ChevronDown size={14} className="hidden text-muted-foreground sm:block" />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-48">

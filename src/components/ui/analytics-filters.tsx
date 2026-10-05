@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronDown, ChevronsUpDown, ListFilter, Search, X } from "lucide-react";
+import { Check, ChevronDown, ChevronsUpDown, Filter, Search, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -100,7 +100,7 @@ function SearchField({ value, onChange, columns, column, onColumnChange }: Searc
   if (!active) return null;
 
   return (
-    <div className="relative w-full md:w-1/2">
+    <div className="relative w-full min-w-0 md:w-1/2">
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         value={value}
@@ -122,7 +122,7 @@ function SearchField({ value, onChange, columns, column, onColumnChange }: Searc
                   isDefault ? "text-muted-foreground hover:text-accent-foreground" : "text-primary"
                 )}
               >
-                <ListFilter className="h-3.5 w-3.5" />
+                <Filter className="h-3.5 w-3.5" />
                 <ChevronDown className="h-3 w-3" />
               </button>
             </DropdownMenuTrigger>
@@ -268,7 +268,7 @@ export function AnalyticsFilterBar({
               panelOpen && "border-primary/60 bg-accent text-accent-foreground"
             )}
           >
-            <ListFilter />
+            <Filter />
             Filters
             {activeCount > 0 && (
               <Badge
@@ -287,7 +287,7 @@ export function AnalyticsFilterBar({
             id="analytics-filter-panel"
             className="mt-3 rounded-lg border bg-muted/40 p-3 sm:p-4"
           >
-            <div className="grid grid-cols-2 gap-x-3 gap-y-3 md:grid-cols-3 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
               {filters.map((def) => (
                 <FilterCombobox
                   key={def.key}

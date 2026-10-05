@@ -260,6 +260,8 @@ export function TeacherAnalytics() {
           />
         </div>
 
+        {/* Data table — the primary focus (scrolls horizontally on small screens) */}
+        <CardContent className="overflow-x-auto p-0">
         <CardContent className="p-0">
           <Table className="min-w-[820px]">
             <TableHeader>

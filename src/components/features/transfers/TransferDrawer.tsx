@@ -1,10 +1,33 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Check, Download, Minus } from "lucide-react";
 import { TransferApplication } from "@/types";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { excelExport, printHtml } from "@/lib/exportHelpers";
 
+const statusMeta: Record<
+TransferApplication["status"],
+{ label: string; variant: "success" | "warning" | "destructive" }
+> = {
+full: { label: "Full", variant: "success" },
+  partial: { label: "Partial", variant: "warning" },
+  pending: { label: "Pending", variant: "destructive" },
+};
+
+const CHECKLIST_LABELS = [
+  "Application form submitted",
+  "Service extract attached",
+  "Medical certificate attached",
+  "Zonal director recommendation",
+];
+
+/**
+ * Transfer application detail — standard right-hand sheet with an overlay,
+ * Escape-to-close, focus trap and scroll lock (Radix Dialog underneath).
+ * Full width on mobile, fixed panel from `sm` up.
+ */
 export function TransferDrawer({
   app: r,
   onClose,
@@ -19,12 +42,7 @@ export function TransferDrawer({
         ? [1, 1, 0, 0]
         : [1, 0, 0, 0];
 
-  const labels = [
-    "Application form submitted",
-    "Service extract attached",
-    "Medical certificate attached",
-    "Zonal director recommendation",
-  ];
+  const status = statusMeta[r.status];
 
   function excelRow() {
     return [
@@ -48,258 +66,90 @@ export function TransferDrawer({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-20 flex items-stretch justify-end bg-black/45"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
-    >
-      {/* =====================================================
-          DRAWER — flush left edge: no shadow, no border strip,
-          no gap between the page overlay and the panel.
-      ====================================================== */}
-      <div
-        className="
-          flex
-          h-full
-          w-full
-          flex-col
-          border-l-0
-          bg-card
-          shadow-none
-
-          sm:w-[600px]
-          lg:w-[720px]
-          xl:w-[780px]
-
-          dark:bg-slate-900
-        "
+    <Sheet defaultOpen onOpenChange={(open) => !open && onClose()}>
+      <SheetContent
+        side="right"
+        aria-describedby={undefined}
+        className="flex w-full flex-col gap-0 p-0 sm:max-w-xl lg:max-w-2xl"
       >
-        {/* ===================================================
-            HEADER
-        ==================================================== */}
-        <div
-          className="
-            flex
-            shrink-0
-            items-start
-            justify-between
-            border-b
-            border-border
-            px-6
-            py-5
-            dark:border-slate-700
-          "
-        >
-          <div className="min-w-0 pr-4">
-            <h3 className="text-[21px] font-semibold text-foreground dark:text-slate-100">
-              {r.name}
-            </h3>
-
-            <div className="mt-1 text-[12.5px] text-muted-foreground dark:text-slate-400">
+        {/* Header */}
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b px-6 py-5 pr-12">
+          <div className="min-w-0">
+            <SheetTitle className="truncate text-lg">{r.name}</SheetTitle>
+            <p className="mt-1 text-[12.5px] text-muted-foreground">
               {r.nic} · DOB {r.dob}
-            </div>
+            </p>
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="
-              flex
-              h-8
-              w-8
-              shrink-0
-              items-center
-              justify-center
-              rounded-md
-              text-muted-foreground
-              transition
-              hover:bg-muted
-              hover:text-foreground
-              dark:text-slate-400
-              dark:hover:bg-slate-800
-              dark:hover:text-slate-100
-            "
-            aria-label="Close"
-          >
-            <X size={20} />
-          </button>
+          <Badge variant={status.variant} className="mt-0.5 shrink-0">
+            {status.label}
+          </Badge>
         </div>
 
-        {/* ===================================================
-            CONTENT
-        ==================================================== */}
+        {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-6 py-6">
-
-          {/* =================================================
-              SERVICE HISTORY
-          ================================================== */}
+          {/* Service history */}
           <Section title="Service history">
             <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-              <Field
-                l="First appointment date"
-                v={r.firstDate}
-              />
-
-              <Field
-                l="First appointment school"
-                v={r.firstSchool}
-              />
-
-              <Field
-                l="Current appointment date"
-                v={r.currentDate}
-              />
-
-              <Field
-                l="Current appointment subject"
-                v={r.apptSubject}
-              />
-
-              <Field
-                l="School service years"
-                v={`${r.serviceYears} years`}
-              />
-
-              <Field
-                l="Teaching subject"
-                v={r.subject}
-              />
-
-              <Field
-                l="Current school"
-                v={r.currentSchool}
-              />
-
-              <Field
-                l="Current zonal"
-                v={r.currentZone}
-              />
+              <Field l="First appointment date" v={r.firstDate} />
+              <Field l="First appointment school" v={r.firstSchool} />
+              <Field l="Current appointment date" v={r.currentDate} />
+              <Field l="Current appointment subject" v={r.apptSubject} />
+              <Field l="School service years" v={`${r.serviceYears} years`} />
+              <Field l="Teaching subject" v={r.subject} />
+              <Field l="Current school" v={r.currentSchool} />
+              <Field l="Current zonal" v={r.currentZone} />
             </div>
           </Section>
 
-          {/* =================================================
-              TRANSFER TARGET
-          ================================================== */}
+          {/* Transfer target */}
           {(r.targetProvince || r.targetZone) && (
             <Section title="Transfer target">
               <div className="grid grid-cols-1 gap-x-8 gap-y-4 sm:grid-cols-2">
-                {r.targetProvince && (
-                  <Field
-                    l="Target province"
-                    v={r.targetProvince}
-                  />
-                )}
-
-                {r.targetZone && (
-                  <Field
-                    l="Target zonal"
-                    v={r.targetZone}
-                  />
-                )}
+                {r.targetProvince && <Field l="Target province" v={r.targetProvince} />}
+                {r.targetZone && <Field l="Target zonal" v={r.targetZone} />}
               </div>
             </Section>
           )}
 
-          {/* =================================================
-              TARGET SCHOOLS
-          ================================================== */}
+          {/* Target schools */}
           <Section title="Applied / target schools (preference order)">
             <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {r.schools.map((school, index) => (
                 <li
                   key={school}
-                  className="
-                    flex
-                    items-center
-                    gap-3
-                    rounded-lg
-                    bg-muted
-                    px-3
-                    py-3
-                    text-[13px]
-                    text-foreground
-
-                    dark:bg-slate-800
-                    dark:text-slate-200
-                  "
+                  className="flex items-center gap-3 rounded-lg bg-muted px-3 py-3 text-[13px] text-foreground"
                 >
-                  <span
-                    className="
-                      flex
-                      h-6
-                      w-6
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-primary
-                      text-[11px]
-                      font-semibold
-                      text-white
-                    "
-                  >
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
                     {index + 1}
                   </span>
-
                   <span>{school}</span>
                 </li>
               ))}
             </ul>
           </Section>
 
-          {/* =================================================
-              APPLICATION COMPLETENESS
-          ================================================== */}
+          {/* Application completeness */}
           <Section title="Application completeness">
-            <div
-              className="
-                rounded-lg
-                border
-                border-border
-                bg-muted
-                p-4
-                dark:border-slate-700
-                dark:bg-slate-800/50
-              "
-            >
+            <div className="rounded-lg border bg-muted/40 p-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {labels.map((label, index) => (
+                {CHECKLIST_LABELS.map((label, index) => (
                   <div
                     key={label}
-                    className="
-                      flex
-                      items-center
-                      gap-3
-                      text-[13px]
-                      text-foreground
-                      dark:text-slate-200
-                    "
+                    className="flex items-center gap-3 text-[13px] text-foreground"
                   >
                     <span
-                      className={`
-                        flex
-                        h-5
-                        w-5
-                        shrink-0
-                        items-center
-                        justify-center
-                        rounded-full
-                        text-[10px]
-                        font-semibold
-                        text-white
-                        ${
-                          done[index]
-                            ? "bg-green-600"
-                            : "bg-border text-muted-foreground dark:bg-slate-700"
-                        }
-                      `}
+                      className={
+                        done[index]
+                          ? "flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-600 text-white"
+                          : "flex h-5 w-5 shrink-0 items-center justify-center rounded-full border bg-card text-muted-foreground"
+                      }
                     >
-                      {done[index] ? "✓" : "—"}
+                      {done[index] ? (
+                        <Check className="h-3 w-3" />
+                      ) : (
+                        <Minus className="h-3 w-3" />
+                      )}
                     </span>
-
                     {label}
                   </div>
                 ))}
@@ -307,53 +157,25 @@ export function TransferDrawer({
             </div>
           </Section>
 
-          {/* =================================================
-              STATUS
-          ================================================== */}
+          {/* Status */}
           <Section title="Application status">
-            <div className="rounded-lg border border-border bg-muted px-4 py-3 dark:border-slate-700 dark:bg-slate-800">
-              <div className="text-[11px] text-muted-foreground dark:text-slate-400">
-                Current status
-              </div>
-
-              <div className="mt-1 text-sm font-semibold text-foreground dark:text-slate-100">
-                {r.status}
-              </div>
+            <div className="flex items-center justify-between rounded-lg border bg-muted/40 px-4 py-3">
+              <span className="text-[11px] text-muted-foreground">Current status</span>
+              <Badge variant={status.variant}>{status.label}</Badge>
             </div>
           </Section>
         </div>
 
-        {/* ===================================================
-            FOOTER ACTIONS
-        ==================================================== */}
-        <div
-          className="
-            flex
-            shrink-0
-            items-center
-            gap-2
-            border-t
-            border-border
-            bg-card
-            px-6
-            py-4
-            dark:border-slate-700
-            dark:bg-slate-900
-          "
-        >
-          <Button
-            onClick={() =>
-              excelExport(
-                `${r.nic}-transfer`,
-                excelRow()
-              )
-            }
-          >
-            ↓ Excel
+        {/* Footer actions */}
+        <div className="flex shrink-0 items-center gap-2 border-t bg-card px-6 py-4">
+          <Button size="sm" onClick={() => excelExport(`${r.nic}-transfer`, excelRow())}>
+            <Download />
+            Excel
           </Button>
 
           <Button
             variant="outline"
+            size="sm"
             onClick={() =>
               printHtml(
                 r.name,
@@ -420,58 +242,31 @@ export function TransferDrawer({
               )
             }
           >
-            ↓ PDF
+            <Download />
+            PDF
           </Button>
         </div>
-      </div>
-    </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-7 last:mb-0">
-      <h4
-        className="
-          mb-3
-          text-[11px]
-          font-semibold
-          uppercase
-          tracking-wide
-          text-muted-foreground
-          dark:text-slate-400
-        "
-      >
+      <h4 className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
         {title}
       </h4>
-
       {children}
     </section>
   );
 }
 
-function Field({
-  l,
-  v,
-}: {
-  l: string;
-  v: string;
-}) {
+function Field({ l, v }: { l: string; v: string }) {
   return (
     <div className="min-w-0">
-      <div className="mb-1 text-[11px] text-muted-foreground dark:text-slate-400">
-        {l}
-      </div>
-
-      <div className="break-words text-[13.5px] font-medium text-foreground dark:text-slate-200">
-        {v}
-      </div>
+      <div className="mb-1 text-[11px] text-muted-foreground">{l}</div>
+      <div className="break-words text-[13.5px] font-medium text-foreground">{v}</div>
     </div>
   );
 }
