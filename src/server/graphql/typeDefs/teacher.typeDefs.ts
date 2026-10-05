@@ -9,6 +9,8 @@ export const teacherTypeDefs = /* GraphQL */ `
     gender: String
     teacherCategory: String
     medium: String
+    search: String
+    searchColumn: String
   }
 
   type TeacherFilterOptions {

@@ -92,6 +92,15 @@ export function TeacherAnalytics() {
   const [error, setError] = useState<string | null>(null);
   const limit = 25;
 
+  const serverFilters = useMemo(
+    () => ({
+      ...filters,
+      search: searchColumn === "zonal" || searchColumn === "school" ? search : "",
+      searchColumn,
+    }),
+    [filters, search, searchColumn],
+  );
+
   useEffect(() => {
     const abortController = new AbortController();
     async function loadTeachers() {
@@ -101,7 +110,7 @@ export function TeacherAnalytics() {
         const response = await fetch("/api/graphql", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: TEACHERS_QUERY, variables: { page, limit, filters } }),
+          body: JSON.stringify({ query: TEACHERS_QUERY, variables: { page, limit, filters: serverFilters } }),
           signal: abortController.signal,
         });
         const payload = (await response.json()) as TeachersPayload;
@@ -121,7 +130,7 @@ export function TeacherAnalytics() {
     }
     void loadTeachers();
     return () => abortController.abort();
-  }, [filters, page]);
+  }, [page, serverFilters]);
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -199,6 +208,16 @@ export function TeacherAnalytics() {
     setPage(1);
   };
 
+  const updateSearch = (value: string) => {
+    setSearch(value);
+    if (searchColumn === "zonal" || searchColumn === "school") setPage(1);
+  };
+
+  const updateSearchColumn = (value: string) => {
+    setSearchColumn(value);
+    if (value === "zonal" || value === "school") setPage(1);
+  };
+
   return (
     <div className="w-full">
       <Card>
@@ -227,10 +246,10 @@ export function TeacherAnalytics() {
         <div className="border-b px-5 py-3">
           <AnalyticsFilterBar
             searchValue={search}
-            onSearchValueChange={setSearch}
+            onSearchValueChange={updateSearch}
             searchColumns={searchColumns}
             searchColumn={searchColumn}
-            onSearchColumnChange={setSearchColumn}
+            onSearchColumnChange={updateSearchColumn}
             filters={filterDefinitions}
             filterValues={filters}
             onFilterChange={updateFilter}
