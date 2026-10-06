@@ -5,6 +5,9 @@ export interface Teacher {
   nic: string;
   school: string;
   zonal: string;
+  province?: string;
+  district?: string;
+  divisional?: string;
   subject: string;
   gender: "Male" | "Female";
   category: "1AB" | "1C" | "Type 2" | "Type 3";
