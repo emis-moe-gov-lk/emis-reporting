@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, ChevronDown, ChevronsUpDown, Filter, Search, X } from "lucide-react";
+import { Check, ChevronDown, ChevronsUpDown, Columns3, Filter, Search, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -122,7 +122,7 @@ function SearchField({ value, onChange, columns, column, onColumnChange }: Searc
                   isDefault ? "text-muted-foreground hover:text-accent-foreground" : "text-primary"
                 )}
               >
-                <Filter className="h-3.5 w-3.5" />
+                <Columns3 className="h-3.5 w-3.5" />
                 <ChevronDown className="h-3 w-3" />
               </button>
             </DropdownMenuTrigger>
