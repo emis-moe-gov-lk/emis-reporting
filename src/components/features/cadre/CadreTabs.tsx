@@ -139,14 +139,16 @@ export function CadreTabs() {
 
   return (
     <div className="w-full space-y-4">
-      {/* Tabs */}
+      {/* Tabs — scrolls horizontally on small screens */}
       <Tabs value={key} onValueChange={switchTab}>
-        <TabsList>
-          <TabsTrigger value="cadre">Cadre vs Filled Posts</TabsTrigger>
-          <TabsTrigger value="vacancy">Vacancy (Ageing)</TabsTrigger>
-          <TabsTrigger value="surplus">Surplus &amp; Deficit</TabsTrigger>
-          <TabsTrigger value="ratio">Teacher–Student Ratio</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList>
+            <TabsTrigger value="cadre">Cadre vs Filled Posts</TabsTrigger>
+            <TabsTrigger value="vacancy">Vacancy (Ageing)</TabsTrigger>
+            <TabsTrigger value="surplus">Surplus &amp; Deficit</TabsTrigger>
+            <TabsTrigger value="ratio">Teacher–Student Ratio</TabsTrigger>
+          </TabsList>
+        </div>
       </Tabs>
 
       {/* Single container: header, search/filters, table */}
@@ -192,8 +194,8 @@ export function CadreTabs() {
           />
         </div>
 
-        {/* Data table — the primary focus */}
-        <CardContent className="p-0">
+        {/* Data table — the primary focus (scrolls horizontally on small screens) */}
+        <CardContent className="overflow-x-auto p-0">
           <Table className="min-w-[820px]">
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">

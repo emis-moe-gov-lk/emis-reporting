@@ -169,13 +169,15 @@ export function TransferApplications() {
 
   return (
     <div className="w-full space-y-4">
-      {/* Tabs */}
+      {/* Tabs — scrolls horizontally on small screens */}
       <Tabs value={tab} onValueChange={switchTab}>
-        <TabsList>
-          <TabsTrigger value="interzonal">Inter-Zonal</TabsTrigger>
-          <TabsTrigger value="anotherzonal">Another Zonal</TabsTrigger>
-          <TabsTrigger value="interprov">Another-Provincial</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList>
+            <TabsTrigger value="interzonal">Inter-Zonal</TabsTrigger>
+            <TabsTrigger value="anotherzonal">Another Zonal</TabsTrigger>
+            <TabsTrigger value="interprov">Another-Provincial</TabsTrigger>
+          </TabsList>
+        </div>
       </Tabs>
 
       {/* Single container: header, search/filters, table */}
@@ -221,8 +223,8 @@ export function TransferApplications() {
           />
         </div>
 
-        {/* Data table — the primary focus */}
-        <CardContent className="p-0">
+        {/* Data table — the primary focus (scrolls horizontally on small screens) */}
+        <CardContent className="overflow-x-auto p-0">
           <Table className="min-w-[900px]">
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">

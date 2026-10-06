@@ -13,7 +13,8 @@ import {
 
 import { cn } from "@/lib/utils";
 
-const links = [
+/** Shared with MobileNav — single source of truth for navigation entries. */
+export const navLinks = [
   {
     href: "/",
     label: "Ministry Overview",
@@ -45,7 +46,7 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-0 flex h-screen w-72 shrink-0 flex-col overflow-y-auto border-r bg-card">
+    <aside className="sticky top-0 hidden h-screen w-72 shrink-0 flex-col overflow-y-auto border-r bg-card lg:flex">
       {/* Ministry Header */}
       <div className="border-b px-4 py-5">
         <div className="flex items-center gap-3">
@@ -87,7 +88,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex flex-col gap-1 p-3">
-        {links.map(({ href, label, icon: Icon }) => {
+        {navLinks.map(({ href, label, icon: Icon }) => {
           const active =
             href === "/"
               ? pathname === "/"

@@ -230,8 +230,8 @@ export function RetirementReport() {
           />
         </div>
 
-        {/* Data table — the primary focus */}
-        <CardContent className="p-0">
+        {/* Data table — the primary focus (scrolls horizontally on small screens) */}
+        <CardContent className="overflow-x-auto p-0">
           <Table className="min-w-[900px]">
             <TableHeader>
               <TableRow className="bg-muted/50 hover:bg-muted/50">
